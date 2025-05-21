@@ -4,15 +4,20 @@ import (
 	"time"
 
 	"github.com/RenanGroh/SaaS_microbusiness_project/backend_go/internal/entity" // <<< AJUSTE O PATH DO MÓDULO AQUI
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // UserGormModel representa a estrutura do usuário para o GORM, com tags de banco.
 type UserGormModel struct {
-	gorm.Model        // Inclui ID uint, CreatedAt, UpdatedAt, DeletedAt
-	Name       string `gorm:"size:100;not null"`
-	Email      string `gorm:"size:100;uniqueIndex;not null"` // uniqueIndex garante unicidade no banco
-	Password   string `gorm:"not null"`                    // Hash da senha
+	// gorm.Model // NÃO USE gorm.Model se for usar UUID como PK, pois gorm.Model usa ID uint
+	ID        uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4();primary_key"` // Define como PK
+	Name      string    `gorm:"size:100;not null"`
+	Email     string    `gorm:"size:100;uniqueIndex;not null"`
+	Password  string    `gorm:"not null"`
+	CreatedAt time.Time // GORM vai popular automaticamente
+	UpdatedAt time.Time // GORM vai popular automaticamente
+    DeletedAt gorm.DeletedAt `gorm:"index"` // Para soft delete, se precisar
 }
 
 // ToEntity converte um UserGormModel para uma entity.User.
@@ -21,23 +26,24 @@ func (m *UserGormModel) ToEntity() *entity.User {
 		ID:        m.ID,
 		Name:      m.Name,
 		Email:     m.Email,
-		Password:  m.Password, // Passa o hash
+		Password:  m.Password,
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
 	}
 }
 
 // FromEntity converte uma entity.User para um UserGormModel para persistência.
+
 func FromEntity(e *entity.User) *UserGormModel {
+    // Se o ID da entidade for uuid.Nil, o GORM (com default:uuid_generate_v4()) irá gerar.
+    // Se já tiver um ID, ele será usado.
 	return &UserGormModel{
-		Model: gorm.Model{ // Se ID for 0, GORM gera. Se não, tenta usar o ID fornecido.
-			ID:        e.ID,
-			CreatedAt: e.CreatedAt,
-			UpdatedAt: e.UpdatedAt,
-		},
-		Name:     e.Name,
-		Email:    e.Email,
-		Password: e.Password, // Salva o hash
+		ID:        e.ID,
+		Name:      e.Name,
+		Email:     e.Email,
+		Password:  e.Password,
+		CreatedAt: e.CreatedAt, // GORM pode sobrescrever se for valor zero
+		UpdatedAt: e.UpdatedAt, // GORM pode sobrescrever se for valor zero
 	}
 }
 

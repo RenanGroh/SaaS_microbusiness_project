@@ -5,13 +5,13 @@ import (
 	"github.com/RenanGroh/SaaS_microbusiness_project/backend_go/internal/entity"     // <<< AJUSTE O PATH DO MÓDULO AQUI
 	"github.com/RenanGroh/SaaS_microbusiness_project/backend_go/internal/repository" // <<< AJUSTE O PATH DO MÓDULO AQUI
 	"gorm.io/gorm"
+	"github.com/google/uuid"
 )
 
 type gormUserRepository struct {
 	db *gorm.DB
 }
 
-// NewGormUserRepository cria uma nova instância da implementação do repositório de usuário com GORM.
 // Ele retorna a interface repository.UserRepository.
 func NewGormUserRepository(db *gorm.DB) repository.UserRepository {
 	return &gormUserRepository{db: db}
@@ -45,10 +45,10 @@ func (r *gormUserRepository) FindByEmail(email string) (*entity.User, error) {
 	return userGorm.ToEntity(), nil
 }
 
-func (r *gormUserRepository) FindByID(id uint) (*entity.User, error) {
+func (r *gormUserRepository) FindByID(id uuid.UUID) (*entity.User, error) {
 	var userGorm UserGormModel
 	// GORM busca por chave primária automaticamente se o segundo argumento for o valor da PK
-	result := r.db.First(&userGorm, id)
+	result := r.db.First(&userGorm, "id = ?", id)
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {

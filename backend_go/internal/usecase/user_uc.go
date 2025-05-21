@@ -7,20 +7,26 @@ import (
 	"github.com/RenanGroh/SaaS_microbusiness_project/backend_go/internal/infra/security"
 	"github.com/RenanGroh/SaaS_microbusiness_project/backend_go/internal/repository"
 	//"log"
+	"github.com/google/uuid"
 )
 
 // UserUseCase encapsula a lógica de negócios relacionada a usuários.
 type UserUseCase struct {
-	userRepo repository.UserRepository
-	// Se você criar interfaces para PasswordHasher:
-	// passwordHasher security.PasswordHasher
+	userRepo          repository.UserRepository
+	jwtSecret         string // Nova dependência
+	jwtExpirationHours int    // Nova dependência
 }
 
 // NewUserUseCase cria uma nova instância de UserUseCase.
-func NewUserUseCase(repo repository.UserRepository /*, hasher security.PasswordHasher*/) *UserUseCase {
+func NewUserUseCase(
+	repo repository.UserRepository,
+	jwtSecret string, // Adicionar
+	jwtExpirationHours int, // Adicionar
+) *UserUseCase {
 	return &UserUseCase{
-		userRepo: repo,
-		// passwordHasher: hasher,
+		userRepo:          repo,
+		jwtSecret:         jwtSecret,
+		jwtExpirationHours: jwtExpirationHours,
 	}
 }
 
@@ -68,30 +74,30 @@ func (uc *UserUseCase) CreateUser(name, email, rawPassword string) (*entity.User
 	return user, nil
 }
 
-func (uc *UserUseCase) Login(email, rawPassword string) (*entity.User, error) {
+func (uc *UserUseCase) Login(email, rawPassword string) (tokenString string, userDetails *entity.User, err error) {
 	// 1. Buscar usuário pelo email
 	user, err := uc.userRepo.FindByEmail(email)
 	if err != nil {
-		// Erro do repositório (não "não encontrado")
-		// log.Printf("Erro do repositório ao buscar email %s: %v", email, err)
-		return nil, errors.New("erro interno ao tentar autenticar")
+		return "", nil, errors.New("erro interno ao tentar autenticar")
 	}
 	if user == nil {
-		// log.Printf("Usuário não encontrado para o email: %s", email)
-		return nil, errors.New("credenciais inválidas") // Mensagem genérica
+		return "", nil, errors.New("credenciais inválidas")
 	}
 
 	// 2. Verificar a senha
-	// passwordMatch := uc.passwordHasher.Check(rawPassword, user.Password) // Se usar interface
-	passwordMatch := security.CheckPasswordHash(rawPassword, user.Password) // Chamando diretamente
+	passwordMatch := security.CheckPasswordHash(rawPassword, user.Password)
 	if !passwordMatch {
-		// log.Printf("Senha incorreta para o usuário: %s", email)
-		return nil, errors.New("credenciais inválidas") // Mensagem genérica
+		return "", nil, errors.New("credenciais inválidas")
 	}
 
-	// 3. Autenticação bem-sucedida
-	// log.Printf("Usuário autenticado com sucesso: %s", email)
-	return user, nil
+	// 3. Gerar o token JWT
+	token, err := security.GenerateJWT(user.ID, user.Email, uc.jwtSecret, uc.jwtExpirationHours) // A CHAMADA AQUI JÁ DEVE ESTAR CORRETA
+	if err != nil {
+		return "", nil, errors.New("falha ao gerar token de autenticação")
+	}
+
+	// 4. Autenticação bem-sucedida
+	return token, user, nil	
 }
 
 // GetUserByEmail é um exemplo de outro caso de uso.
@@ -103,5 +109,24 @@ func (uc *UserUseCase) GetUserByEmail(email string) (*entity.User, error) {
 	if user == nil {
 		return nil, errors.New("usuário não encontrado") // Erro de negócio específico
 	}
+	return user, nil
+}
+
+// GetUserByID é o caso de uso para buscar um usuário pelo seu ID.
+func (uc *UserUseCase) GetUserByID(id uuid.UUID) (*entity.User, error) {
+	if id == uuid.Nil {
+		return nil, errors.New("ID do usuário não pode ser nulo")
+	}
+
+	user, err := uc.userRepo.FindByID(id) // Chama o método do repositório
+	if err != nil {
+		// Erro do repositório (ex: problema de conexão)
+		return nil, errors.New("erro ao buscar usuário por ID: " + err.Error())
+	}
+	if user == nil {
+		// Repositório retornou nil, nil (usuário não encontrado)
+		return nil, errors.New("usuário não encontrado") // Ou retorne (nil, nil) para o handler decidir
+	}
+
 	return user, nil
 }

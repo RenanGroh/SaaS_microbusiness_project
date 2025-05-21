@@ -1,13 +1,14 @@
-package http // Pacote http (ou httpdelivery, como você preferir chamar)
+package http
 
 import (
-	"net/http" // Para códigos de status HTTP
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	// Certifique-se que o path para 'usecase' está correto e corresponde ao seu go.mod
+	"github.com/google/uuid"
+
+	"github.com/RenanGroh/SaaS_microbusiness_project/backend_go/internal/delivery/http/middleware"
 	"github.com/RenanGroh/SaaS_microbusiness_project/backend_go/internal/usecase"
-	// "github.com/RenanGroh/SaaS_microbusiness_project/backend_go/internal/entity" // Não é mais necessário aqui se o usecase retorna a entidade
 )
 
 // -----------------------------------------------------------------------------
@@ -24,11 +25,11 @@ type CreateUserInput struct {
 
 // UserResponse define a estrutura para os dados de saída do usuário (sem senha).
 type UserResponse struct {
-    ID        uint      `json:"id"`
+    ID        uuid.UUID `json:"id"` // <<< MUDOU PARA uuid.UUID
     Name      string    `json:"name"`
     Email     string    `json:"email"`
-    CreatedAt time.Time `json:"createdAt,omitempty"` // Verifique se está aqui
-    UpdatedAt time.Time `json:"updatedAt"` // Verifique se está aqui
+    CreatedAt time.Time `json:"createdAt,omitempty"`
+    UpdatedAt time.Time `json:"updatedAt,omitempty"`
 }
 
 type LoginInput struct {
@@ -36,11 +37,10 @@ type LoginInput struct {
     Password string `json:"password" binding:"required"`
 }
 
-// LoginResponse (placeholder por enquanto, depois adicionaremos o token aqui)
-// type LoginResponse struct {
-//  Token string `json:"token"`
-//  User  UserResponse `json:"user"` // Opcional, se quiser retornar dados do usuário
-// }
+type LoginResponse struct {
+	Token string       `json:"token"`
+	User  UserResponse `json:"user"` // Para retornar alguns dados do usuário
+}
 
 // -----------------------------------------------------------------------------
 // UserHandler e seus métodos
@@ -115,9 +115,44 @@ func (h *UserHandler) GetUserByEmail(c *gin.Context) {
 }
 
 // GetUserByID (Placeholder, se você descomentar a rota que o usa)
+// GetUserByID godoc
+// @Summary      Busca um usuário pelo ID
+// @Description  Retorna os dados de um usuário dado seu ID (UUID)
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "ID do Usuário (UUID)"
+// @Success      200  {object} UserResponse
+// @Failure      400  {object} map[string]string "ID inválido (não é UUID)"
+// @Failure      404  {object} map[string]string "Usuário não encontrado"
+// @Failure      500  {object} map[string]string "Erro interno"
+// @Router       /users/{id} [get] // Ajuste a rota se necessário no router.go
 func (h *UserHandler) GetUserByID(c *gin.Context) {
-	id := c.Param("id")
-	c.JSON(http.StatusOK, gin.H{"message": "GetUserByID - placeholder", "id": id})
+	idParam := c.Param("id")
+	userID, err := uuid.Parse(idParam) // Faz o parse do parâmetro da URL para UUID
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID de usuário inválido, deve ser um UUID"})
+		return
+	}
+
+	userEntity, err := h.userUseCase.GetUserByID(userID) // Chama o método do UserUseCase
+	if err != nil {
+		if err.Error() == "usuário não encontrado" { // Melhorar com tipos de erro customizados
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao buscar usuário: " + err.Error()})
+		return
+	}
+
+	response := UserResponse{
+		ID:        userEntity.ID,
+		Name:      userEntity.Name,
+		Email:     userEntity.Email,
+		CreatedAt: userEntity.CreatedAt,
+		UpdatedAt: userEntity.UpdatedAt,
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 // Login godoc
@@ -140,7 +175,8 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	loggedInUser, err := h.userUseCase.Login(input.Email, input.Password)
+	// O UserCase.Login agora retorna (token, userEntity, error)
+	tokenString, loggedInUserEntity, err := h.userUseCase.Login(input.Email, input.Password)
 	if err != nil {
 		if err.Error() == "credenciais inválidas" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
@@ -150,19 +186,68 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// Por enquanto, apenas uma mensagem de sucesso. Depois adicionaremos o token JWT.
-	// Opcional: retornar alguns dados do usuário (sem a senha!)
-	userResponse := UserResponse{
-		ID:    loggedInUser.ID,
-		Name:  loggedInUser.Name,
-		Email: loggedInUser.Email,
-		// CreatedAt: loggedInUser.CreatedAt, // Se quiser incluir
-		// UpdatedAt: loggedInUser.UpdatedAt, // Se quiser incluir
+	// Mapear a entidade para o UserResponse DTO
+	userResponseData := UserResponse{
+		ID:    loggedInUserEntity.ID,
+		Name:  loggedInUserEntity.Name,
+		Email: loggedInUserEntity.Email,
+		CreatedAt: loggedInUserEntity.CreatedAt, // Adicione se quiser
+		UpdatedAt: loggedInUserEntity.UpdatedAt, // Adicione se quiser
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Login bem-sucedido!",
-		"user":    userResponse,
-		// "token": "AQUI_VAI_O_TOKEN_JWT_FUTURAMENTE",
-	})
+	// Criar a resposta final com o token e os dados do usuário
+	loginResp := LoginResponse{
+		Token: tokenString,
+		User:  userResponseData,
+	}
+
+	c.JSON(http.StatusOK, loginResp)
+}
+
+// GetUserProfile godoc
+// @Summary      Obtém o perfil do usuário autenticado
+// @Description  Retorna os dados do usuário atualmente logado (requer token JWT)
+// @Tags         users
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200  {object} UserResponse "Perfil do usuário"
+// @Failure      401  {object} map[string]string "Não autorizado"
+// @Failure      404  {object} map[string]string "Usuário não encontrado (raro se o token é válido)"
+// @Router       /users/me [get]
+func (h *UserHandler) GetUserProfile(c *gin.Context) {
+	// Extrair o UserID do contexto Gin, que foi colocado pelo AuthMiddleware
+	// Usando a função helper:
+	userID, exists := middleware.GetUserIDFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Falha ao obter ID do usuário do token"})
+		return
+	}
+
+	// Alternativamente, acessando diretamente as claims:
+	// authPayload := c.MustGet(middleware.AuthorizationPayloadKey).(*security.Claims)
+	// userID := authPayload.UserID
+
+	// Buscar o usuário usando o ID do token
+	// Você precisará de um método no UserUseCase como GetUserByID(id uuid.UUID)
+	// que por sua vez chama userRepo.FindByID(id uuid.UUID)
+	userEntity, err := h.userUseCase.GetUserByID(userID) // << PRECISA CRIAR UserUseCase.GetUserByID
+	if err != nil {
+		// Tratar erro, ex: usuário não encontrado (embora improvável se o token é válido e recente)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Usuário não encontrado: " + err.Error()})
+		return
+	}
+	if userEntity == nil { // Caso o use case retorne nil, nil para não encontrado
+		c.JSON(http.StatusNotFound, gin.H{"error": "Usuário não encontrado"})
+		return
+	}
+
+
+	response := UserResponse{
+		ID:        userEntity.ID,
+		Name:      userEntity.Name,
+		Email:     userEntity.Email,
+		CreatedAt: userEntity.CreatedAt,
+		UpdatedAt: userEntity.UpdatedAt,
+	}
+	c.JSON(http.StatusOK, response)
 }
