@@ -47,16 +47,67 @@ func FromEntity(e *entity.User) *UserGormModel {
 	}
 }
 
-// AppointmentGormModel (Exemplo para quando você adicionar agendamentos)
- type AppointmentGormModel struct {
- 	gorm.Model
- 	UserID    uint   `gorm:"not null"`
-	User      UserGormModel `gorm:"foreignKey:UserID"` // Relacionamento
-	ClientName string
-	StartTime time.Time
-	EndTime   time.Time
-	Status    string
+// -----------------------------------------------------------------------------
+// AppointmentGormModel
+// -----------------------------------------------------------------------------
+type AppointmentGormModel struct {
+	ID                uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4();primary_key"`
+	UserID            uuid.UUID `gorm:"type:uuid;not null;index"` // Chave estrangeira para UserGormModel
+	User              UserGormModel `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"` // Relacionamento
+	ClientID          *uuid.UUID `gorm:"type:uuid;index"` // Opcional, pode ser nulo
+	ClientUser        *UserGormModel `gorm:"foreignKey:ClientID;constraint:OnUpdate:SET NULL,OnDelete:SET NULL;"` // Relacionamento opcional
+	ClientName        string    `gorm:"size:255"`
+	ClientEmail       string    `gorm:"size:255"`
+	ClientPhone       string    `gorm:"size:50"`
+	ServiceDescription string    `gorm:"type:text"`
+	StartTime         time.Time `gorm:"not null;index"`
+	EndTime           time.Time `gorm:"not null"`
+	Status            string    `gorm:"size:50;not null;default:'PENDING'"` // Usando string para status no GORM
+	Notes             string    `gorm:"type:text"`
+	Price             float64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	DeletedAt         gorm.DeletedAt `gorm:"index"`
 }
 
+// ToEntity converte um AppointmentGormModel para uma entity.Appointment.
+func (m *AppointmentGormModel) ToEntity() *entity.Appointment {
+	return &entity.Appointment{
+		ID:                m.ID,
+		UserID:            m.UserID,
+		ClientID:          m.ClientID, // Preserva o ponteiro
+		ClientName:        m.ClientName,
+		ClientEmail:       m.ClientEmail,
+		ClientPhone:       m.ClientPhone,
+		ServiceDescription: m.ServiceDescription,
+		StartTime:         m.StartTime,
+		EndTime:           m.EndTime,
+		Status:            entity.AppointmentStatus(m.Status), // Converte string para o tipo customizado
+		Notes:             m.Notes,
+		Price:             m.Price,
+		CreatedAt:         m.CreatedAt,
+		UpdatedAt:         m.UpdatedAt,
+	}
+}
+
+// AppointmentFromEntity converte uma entity.Appointment para um AppointmentGormModel para persistência.
+func AppointmentFromEntity(e *entity.Appointment) *AppointmentGormModel {
+	return &AppointmentGormModel{
+		ID:                e.ID, // Se e.ID for uuid.Nil, GORM (com default) irá gerar
+		UserID:            e.UserID,
+		ClientID:          e.ClientID,
+		ClientName:        e.ClientName,
+		ClientEmail:       e.ClientEmail,
+		ClientPhone:       e.ClientPhone,
+		ServiceDescription: e.ServiceDescription,
+		StartTime:         e.StartTime,
+		EndTime:           e.EndTime,
+		Status:            string(e.Status), // Converte tipo customizado para string
+		Notes:             e.Notes,
+		Price:             e.Price,
+		CreatedAt:         e.CreatedAt, // GORM pode popular se for zero
+		UpdatedAt:         e.UpdatedAt, // GORM pode popular se for zero
+	}
+}
 //func (m *AppointmentGormModel) ToEntity() *entity.Appointment { /* ... */ }
 //func AppointmentFromEntity(e *entity.Appointment) *AppointmentGormModel { /* ... */ }

@@ -18,24 +18,29 @@ func main() {
 	if err != nil {
 		log.Fatalf("Falha ao conectar ao banco de dados: %v", err)
 	}
-	err = db.AutoMigrate(&gormPersistence.UserGormModel{})
+
+	// Adicionar AppointmentGormModel ao AutoMigrate
+	err = db.AutoMigrate(&gormPersistence.UserGormModel{}, &gormPersistence.AppointmentGormModel{}) // <<< ADICIONADO
 	if err != nil {
 		log.Fatalf("Falha ao rodar AutoMigrate: %v", err)
 	}
 
+	// Repositórios
 	userGormRepo := gormPersistence.NewGormUserRepository(db)
+	appointmentGormRepo := gormPersistence.NewGormAppointmentRepository(db) // <<< ADICIONADO
 
-	// Agora passamos jwtSecret e jwtExpirationHours para o UserUseCase
-	userUC := usecase.NewUserUseCase(
-		userGormRepo,
-		cfg.JWTSecret,          // <<< ADICIONADO
-		cfg.JWTExpirationHours, // <<< ADICIONADO
-	)
+	// Casos de Uso
+	userUC := usecase.NewUserUseCase(userGormRepo, cfg.JWTSecret, cfg.JWTExpirationHours)
+	appointmentUC := usecase.NewAppointmentUseCase(appointmentGormRepo, userGormRepo) // <<< ADICIONADO (passa userRepo também)
 
+	// Handlers HTTP
 	userHandler := httpDelivery.NewUserHandler(userUC)
+	appointmentHandler := httpDelivery.NewAppointmentHandler(appointmentUC) // <<< ADICIONADO
 
+	// Roteador Gin
 	router := gin.Default()
-	httpDelivery.SetupRoutes(router, cfg, userHandler)
+	// Passar appointmentHandler para SetupRoutes
+	httpDelivery.SetupRoutes(router, cfg, userHandler, appointmentHandler) // <<< ADICIONADO
 
 	log.Printf("Servidor Bizly iniciando na porta %s", cfg.ServerPort)
 	if err := router.Run(":" + cfg.ServerPort); err != nil {
