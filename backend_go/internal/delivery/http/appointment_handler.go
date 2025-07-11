@@ -1,6 +1,7 @@
 package http
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -114,6 +115,7 @@ func (h *AppointmentHandler) CreateAppointment(c *gin.Context) {
 
 	var req CreateAppointmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("Binding error in CreateAppointment: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados inválidos na requisição", "details": err.Error()})
 		return
 	}

@@ -58,5 +58,32 @@ class ApiService {
     return http.get(url, headers: headers);
   }
 
+  // Novo método para criar agendamento
+  Future<http.Response> createAppointment(Map<String, dynamic> body) async {
+    return post('appointments', body, requiresAuth: true);
+  }
+
+  // Novo método para buscar agendamentos
+  Future<http.Response> getAppointments({DateTime? startTime, DateTime? endTime}) async {
+    String endpoint = 'appointments';
+    Map<String, String> queryParams = {};
+    if (startTime != null) {
+      queryParams['startTime'] = startTime.toIso8601String();
+    }
+    if (endTime != null) {
+      queryParams['endTime'] = endTime.toIso8601String();
+    }
+    
+    // Adiciona os query params à URL se houver algum
+    if (queryParams.isNotEmpty) {
+      final uri = Uri.parse('$_baseUrl/$endpoint').replace(queryParameters: queryParams);
+      final headers = await _getHeaders(requiresAuth: true);
+      return http.get(uri, headers: headers);
+    } else {
+      // Chama o método get normal se não houver filtros
+      return get(endpoint, requiresAuth: true);
+    }
+  }
+
   // Adicione métodos PUT, DELETE conforme necessário
 }

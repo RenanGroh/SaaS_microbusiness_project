@@ -1,6 +1,7 @@
 import 'package:bizly_app/shared/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:bizly_app/features/appointments/screens/appointment_list_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -33,13 +34,15 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                // Navegar para a tela de listar/criar agendamentos
-                ScaffoldMessenger.of(context).showSnackBar(
-                   const SnackBar(content: Text('Navegação para Agendamentos (implementar)')),
+                // Navegar para a tela de listar agendamentos
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AppointmentListScreen(),
+                  ),
                 );
               },
               child: const Text('Ver Meus Agendamentos'),
-            )
+            ),
           ],
         ),
       ),
