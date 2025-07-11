@@ -52,6 +52,26 @@ class ApiService {
     );
   }
 
+  Future<http.Response> put(String endpoint, Map<String, dynamic> body, {bool requiresAuth = false}) async {
+    final url = Uri.parse('$_baseUrl/$endpoint');
+    final headers = await _getHeaders(requiresAuth: requiresAuth);
+    return http.put(
+      url,
+      headers: headers,
+      body: jsonEncode(body),
+    );
+  }
+
+  Future<http.Response> patch(String endpoint, Map<String, dynamic> body, {bool requiresAuth = false}) async {
+    final url = Uri.parse('$_baseUrl/$endpoint');
+    final headers = await _getHeaders(requiresAuth: requiresAuth);
+    return http.patch(
+      url,
+      headers: headers,
+      body: jsonEncode(body),
+    );
+  }
+
   Future<http.Response> get(String endpoint, {bool requiresAuth = true}) async {
     final url = Uri.parse('$_baseUrl/$endpoint');
     final headers = await _getHeaders(requiresAuth: requiresAuth);
@@ -85,5 +105,17 @@ class ApiService {
     }
   }
 
-  // Adicione métodos PUT, DELETE conforme necessário
+  Future<http.Response> cancelAppointment(String appointmentId) async {
+    return patch('appointments/$appointmentId/cancel', {}, requiresAuth: true);
+  }
+
+  Future<http.Response> updateAppointment(String appointmentId, Map<String, dynamic> body) async {
+    return put('appointments/$appointmentId', body, requiresAuth: true);
+  }
+
+  Future<http.Response> deleteAppointment(String appointmentId) async {
+    final url = Uri.parse('$_baseUrl/appointments/$appointmentId');
+    final headers = await _getHeaders(requiresAuth: true);
+    return http.delete(url, headers: headers);
+  }
 }

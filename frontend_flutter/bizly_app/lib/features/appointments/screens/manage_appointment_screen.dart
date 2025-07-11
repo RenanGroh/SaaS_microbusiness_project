@@ -1,36 +1,65 @@
+import 'package:bizly_app/shared/models/appointment_model.dart'; // Adicionado
 import 'package:bizly_app/shared/services/appointment_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:bizly_app/features/appointments/screens/create_appointment_screen.dart';
 
-class CreateAppointmentScreen extends StatefulWidget {
-  const CreateAppointmentScreen({super.key});
+class ManageAppointmentScreen extends StatefulWidget {
+  final Appointment? appointment; // Agendamento opcional para edição
+
+  const ManageAppointmentScreen({super.key, this.appointment});
 
   @override
-  State<CreateAppointmentScreen> createState() => _CreateAppointmentScreenState();
+  State<ManageAppointmentScreen> createState() => _ManageAppointmentScreenState();
 }
 
-class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
+class _ManageAppointmentScreenState extends State<ManageAppointmentScreen> {
   final _formKey = GlobalKey<FormState>();
   final _clientNameController = TextEditingController();
   final _serviceDescController = TextEditingController();
+  final _clientEmailController = TextEditingController(); // Adicionado
+  final _clientPhoneController = TextEditingController(); // Adicionado
+  final _notesController = TextEditingController(); // Adicionado
+  final _priceController = TextEditingController(); // Adicionado
+
   DateTime? _startTime;
   TimeOfDay? _selectedTime;
+
+  bool get isEditing => widget.appointment != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (isEditing) {
+      final appointment = widget.appointment!;
+      _clientNameController.text = appointment.clientName;
+      _serviceDescController.text = appointment.serviceDescription;
+      _clientEmailController.text = appointment.clientEmail;
+      _clientPhoneController.text = appointment.clientPhone;
+      _notesController.text = appointment.notes;
+      _priceController.text = appointment.price.toString();
+      _startTime = appointment.startTime.toLocal();
+      _selectedTime = TimeOfDay.fromDateTime(_startTime!); // Converte DateTime para TimeOfDay
+    }
+  }
 
   @override
   void dispose() {
     _clientNameController.dispose();
     _serviceDescController.dispose();
+    _clientEmailController.dispose(); // Adicionado
+    _clientPhoneController.dispose(); // Adicionado
+    _notesController.dispose(); // Adicionado
+    _priceController.dispose(); // Adicionado
     super.dispose();
   }
 
   Future<void> _selectDate() async {
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDate: _startTime ?? DateTime.now(), // Usa data existente ou atual
+      firstDate: DateTime.now().subtract(const Duration(days: 365 * 5)), // 5 anos atrás
+      lastDate: DateTime.now().add(const Duration(days: 365 * 5)), // 5 anos para frente
     );
     if (pickedDate != null) {
       setState(() {
@@ -42,7 +71,7 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
   Future<void> _selectTime() async {
     final pickedTime = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: _selectedTime ?? TimeOfDay.now(), // Usa hora existente ou atual
       builder: (BuildContext context, Widget? child) {
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
@@ -82,28 +111,33 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
     final appointmentData = {
       'clientName': _clientNameController.text,
       'serviceDescription': _serviceDescController.text,
-      'startTime': finalStartTime.toIso8601String(), // Agora vai gerar com 'Z'
-      'endTime': finalEndTime.toIso8601String(),   // Agora vai gerar com 'Z'
-      // Adicione outros campos como clientEmail, phone, price, etc.
-      'clientEmail': 'placeholder@email.com',
-      'clientPhone': '000000000',
-      'price': 0.0,
-      'notes': '',
+      'startTime': DateFormat("yyyy-MM-ddTHH:mm:ss'Z'").format(finalStartTime),
+      'endTime': DateFormat("yyyy-MM-ddTHH:mm:ss'Z'").format(finalEndTime),
+      'clientEmail': _clientEmailController.text,
+      'clientPhone': _clientPhoneController.text,
+      'price': double.tryParse(_priceController.text) ?? 0.0,
+      'notes': _notesController.text,
     };
 
-    final success = await Provider.of<AppointmentService>(context, listen: false)
-        .createAppointment(appointmentData);
+    bool success;
+    if (isEditing) {
+      success = await Provider.of<AppointmentService>(context, listen: false)
+          .updateAppointment(widget.appointment!.id, appointmentData);
+    } else {
+      success = await Provider.of<AppointmentService>(context, listen: false)
+          .createAppointment(appointmentData);
+    }
     
     if (mounted) {
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Agendamento criado com sucesso!')),
+          SnackBar(content: Text(isEditing ? 'Agendamento atualizado com sucesso!' : 'Agendamento criado com sucesso!')),
         );
         Navigator.of(context).pop(); // Volta para a tela anterior
       } else {
         final errorMessage = Provider.of<AppointmentService>(context, listen: false).errorMessage;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro: ${errorMessage ?? "Falha ao criar agendamento"}')),
+          SnackBar(content: Text('Erro: ${errorMessage ?? (isEditing ? "Falha ao atualizar agendamento" : "Falha ao criar agendamento")}')),
         );
       }
     }
@@ -116,7 +150,7 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
       builder: (context, appointmentService, child) {
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Novo Agendamento'),
+            title: Text(isEditing ? 'Editar Agendamento' : 'Novo Agendamento'),
           ),
           body: appointmentService.isLoading
               ? const Center(child: CircularProgressIndicator())
@@ -139,6 +173,37 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
                           decoration: const InputDecoration(labelText: 'Descrição do Serviço'),
                            validator: (value) =>
                               value!.isEmpty ? 'Campo obrigatório' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _clientEmailController,
+                          decoration: const InputDecoration(labelText: 'Email do Cliente'),
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _clientPhoneController,
+                          decoration: const InputDecoration(labelText: 'Telefone do Cliente'),
+                          keyboardType: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _priceController,
+                          decoration: const InputDecoration(labelText: 'Preço'),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) return null;
+                            if (double.tryParse(value) == null) {
+                              return 'Preço inválido';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _notesController,
+                          decoration: const InputDecoration(labelText: 'Notas'),
+                          maxLines: 3,
                         ),
                         const SizedBox(height: 16),
                         Row(
@@ -174,7 +239,7 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
                         const SizedBox(height: 24),
                         ElevatedButton(
                           onPressed: _submitForm,
-                          child: const Text('Salvar Agendamento'),
+                          child: Text(isEditing ? 'Atualizar Agendamento' : 'Salvar Agendamento'),
                         ),
                       ],
                     ),

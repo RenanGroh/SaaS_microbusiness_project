@@ -360,3 +360,40 @@ func (h *AppointmentHandler) CancelAppointment(c *gin.Context) {
 
 	c.JSON(http.StatusOK, mapAppointmentEntityToResponse(cancelledAppointmentEntity))
 }
+
+// DeleteAppointment godoc
+// @Summary      Exclui um agendamento
+// @Description  Exclui um agendamento se o usuário tiver permissão.
+// @Tags         appointments
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id path string true "ID do Agendamento (UUID)"
+// @Success      204  {string} string "No Content"
+// @Failure      400  {object} map[string]string "ID inválido"
+// @Failure      401  {object} map[string]string "Não autorizado"
+// @Failure      404  {object} map[string]string "Agendamento não encontrado"
+// @Failure      500  {object} map[string]string "Erro interno"
+// @Router       /appointments/{id} [delete]
+func (h *AppointmentHandler) DeleteAppointment(c *gin.Context) {
+	requestingUserID, exists := middleware.GetUserIDFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Usuário não autenticado"})
+		return
+	}
+
+	appointmentIDStr := c.Param("id")
+	appointmentID, err := uuid.Parse(appointmentIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID do agendamento inválido"})
+		return
+	}
+
+	err = h.appointmentUseCase.DeleteAppointment(appointmentID, requestingUserID)
+	if err != nil {
+		// Tratar erros do caso de uso
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha ao excluir agendamento: " + err.Error()})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}

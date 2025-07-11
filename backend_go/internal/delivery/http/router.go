@@ -42,7 +42,7 @@ func SetupRoutes(
 			appointmentRoutes.GET("/:id", appointmentHandler.GetAppointmentByID)
 			appointmentRoutes.PUT("/:id", appointmentHandler.UpdateAppointment)
 			appointmentRoutes.PATCH("/:id/cancel", appointmentHandler.CancelAppointment) // Usando PATCH para mudança de status
-			// appointmentRoutes.DELETE("/:id", appointmentHandler.DeleteAppointment) // Se for implementar delete
+			appointmentRoutes.DELETE("/:id", appointmentHandler.DeleteAppointment) // Adicionado rota DELETE
 		}
 	}
 

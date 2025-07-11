@@ -6,7 +6,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 // --- LINHA DE IMPORT ADICIONADA AQUI ---
-import 'package:bizly_app/features/appointments/screens/create_appointment_screen.dart';
+import 'package:bizly_app/features/appointments/screens/manage_appointment_screen.dart';
+import 'package:bizly_app/features/appointments/screens/appointment_detail_screen.dart'; // Adicionado
 // ----------------------------------------
 
 class AppointmentListScreen extends StatefulWidget {
@@ -79,7 +80,11 @@ class _AppointmentListScreenState extends State<AppointmentListScreen> {
                     ),
                   ),
                   onTap: () {
-                    // TODO: Navegar para a tela de detalhes do agendamento
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AppointmentDetailScreen(appointment: appointment),
+                      ),
+                    ).then((_) => appointmentService.fetchAppointments()); // Recarrega a lista ao voltar
                   },
                 ),
               );
@@ -90,8 +95,7 @@ class _AppointmentListScreenState extends State<AppointmentListScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.of(context).push(
-            // Agora que o import foi adicionado, esta linha não dará mais erro.
-            MaterialPageRoute(builder: (_) => const CreateAppointmentScreen()),
+            MaterialPageRoute(builder: (_) => const ManageAppointmentScreen()),
           );
         },
         tooltip: 'Novo Agendamento',

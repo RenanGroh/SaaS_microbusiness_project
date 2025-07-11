@@ -228,3 +228,14 @@ func (uc *AppointmentUseCase) CancelAppointment(appointmentID, requestingUserID 
 
 	return appointment, nil
 }
+
+// DeleteAppointment exclui um agendamento.
+// Verifica se o userID fornecido (do token) tem permissão.
+func (uc *AppointmentUseCase) DeleteAppointment(appointmentID, requestingUserID uuid.UUID) error {
+	_, err := uc.GetAppointmentByID(appointmentID, requestingUserID) // Reutiliza a verificação de permissão
+	if err != nil {
+		return err // Erro já tratado por GetAppointmentByID (não encontrado ou não autorizado)
+	}
+
+	return uc.appointmentRepo.Delete(appointmentID)
+}
