@@ -11,11 +11,13 @@ class AuthService with ChangeNotifier {
   User? _currentUser;
   String? _token;
   bool _isLoading = false;
+  String? _errorMessage; // Adicionado
 
   User? get currentUser => _currentUser;
   String? get token => _token;
   bool get isAuthenticated => _token != null && _currentUser != null;
   bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage; // Adicionado
 
   AuthService() {
     _tryAutoLogin();
@@ -64,12 +66,16 @@ class AuthService with ChangeNotifier {
         await _secureStorage.saveUserId(_currentUser!.id);
 
         _setLoading(false);
+        _errorMessage = null; // Limpa qualquer erro anterior
         return true;
       } else {
+        final errorData = jsonDecode(response.body);
+        _errorMessage = errorData['error'] ?? 'Falha no login'; // Captura a mensagem de erro
         _setLoading(false);
         return false;
       }
     } catch (e) {
+      _errorMessage = 'Erro de conexão: $e'; // Captura erro de exceção
       _setLoading(false);
       return false;
     }
@@ -86,12 +92,16 @@ class AuthService with ChangeNotifier {
 
       if (response.statusCode == 201) {
         _setLoading(false);
+        _errorMessage = null; // Limpa qualquer erro anterior
         return true;
       } else {
+        final errorData = jsonDecode(response.body);
+        _errorMessage = errorData['error'] ?? 'Falha no cadastro'; // Captura a mensagem de erro
         _setLoading(false);
         return false;
       }
     } catch (e) {
+      _errorMessage = 'Erro de conexão: $e'; // Captura erro de exceção
       _setLoading(false);
       return false;
     }

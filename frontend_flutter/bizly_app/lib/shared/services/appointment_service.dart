@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:bizly_app/shared/models/appointment_model.dart';
 import 'package:bizly_app/shared/services/api_service.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http; // Adicionado
 
 class AppointmentService with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -37,6 +38,26 @@ class AppointmentService with ChangeNotifier {
     }
   }
 
+  Future<bool> _performAppointmentAction(
+      Future<http.Response> Function() apiCall, int successStatusCode, String actionName) async {
+    _setState(loading: true);
+    try {
+      final response = await apiCall();
+      if (response.statusCode == successStatusCode) {
+        await fetchAppointments();
+        _setState(loading: false);
+        return true;
+      } else {
+        final errorData = jsonDecode(response.body);
+        _setState(loading: false, error: errorData['error'] ?? 'Falha ao $actionName agendamento');
+        return false;
+      }
+    } catch (e) {
+      _setState(loading: false, error: 'Erro de conexão: $e');
+      return false;
+    }
+  }
+
   Future<bool> createAppointment(Map<String, dynamic> data) async {
     _setState(loading: true);
     try {
@@ -58,78 +79,22 @@ class AppointmentService with ChangeNotifier {
   }
 
   Future<bool> cancelAppointment(String appointmentId) async {
-    _setState(loading: true);
-    try {
-      final response = await _apiService.cancelAppointment(appointmentId);
-      if (response.statusCode == 200) {
-        await fetchAppointments();
-        _setState(loading: false);
-        return true;
-      } else {
-        final errorData = jsonDecode(response.body);
-        _setState(loading: false, error: errorData['error'] ?? 'Falha ao cancelar agendamento');
-        return false;
-      }
-    } catch (e) {
-      _setState(loading: false, error: 'Erro de conexão: $e');
-      return false;
-    }
+    return _performAppointmentAction(
+        () => _apiService.cancelAppointment(appointmentId), 200, 'cancelar');
   }
 
   Future<bool> updateAppointmentStatus(String appointmentId, String newStatus) async {
-    _setState(loading: true);
-    try {
-      final response = await _apiService.updateAppointment(appointmentId, {'status': newStatus});
-      if (response.statusCode == 200) {
-        await fetchAppointments();
-        _setState(loading: false);
-        return true;
-      } else {
-        final errorData = jsonDecode(response.body);
-        _setState(loading: false, error: errorData['error'] ?? 'Falha ao atualizar status do agendamento');
-        return false;
-      }
-    } catch (e) {
-      _setState(loading: false, error: 'Erro de conexão: $e');
-      return false;
-    }
+    return _performAppointmentAction(
+        () => _apiService.updateAppointment(appointmentId, {'status': newStatus}), 200, 'atualizar status');
   }
 
   Future<bool> updateAppointment(String appointmentId, Map<String, dynamic> data) async {
-    _setState(loading: true);
-    try {
-      final response = await _apiService.updateAppointment(appointmentId, data);
-      if (response.statusCode == 200) {
-        await fetchAppointments();
-        _setState(loading: false);
-        return true;
-      } else {
-        final errorData = jsonDecode(response.body);
-        _setState(loading: false, error: errorData['error'] ?? 'Falha ao atualizar agendamento');
-        return false;
-      }
-    } catch (e) {
-      _setState(loading: false, error: 'Erro de conexão: $e');
-      return false;
-    }
+    return _performAppointmentAction(
+        () => _apiService.updateAppointment(appointmentId, data), 200, 'atualizar');
   }
 
   Future<bool> deleteAppointment(String appointmentId) async {
-    _setState(loading: true);
-    try {
-      final response = await _apiService.deleteAppointment(appointmentId);
-      if (response.statusCode == 204) { // 204 No Content para deleção bem-sucedida
-        await fetchAppointments();
-        _setState(loading: false);
-        return true;
-      } else {
-        final errorData = jsonDecode(response.body);
-        _setState(loading: false, error: errorData['error'] ?? 'Falha ao excluir agendamento');
-        return false;
-      }
-    } catch (e) {
-      _setState(loading: false, error: 'Erro de conexão: $e');
-      return false;
-    }
+    return _performAppointmentAction(
+        () => _apiService.deleteAppointment(appointmentId), 204, 'excluir');
   }
 }

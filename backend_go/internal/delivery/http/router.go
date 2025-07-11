@@ -11,7 +11,8 @@ func SetupRoutes(
 	router *gin.Engine,
 	cfg *config.Config,
 	userHandler *UserHandler,
-	appointmentHandler *AppointmentHandler, // <<< ADICIONADO
+	appointmentHandler *AppointmentHandler,
+	clientHandler *ClientHandler, // Adicionado
 ) {
 	authMW := middleware.AuthMiddleware(cfg)
 
@@ -43,6 +44,17 @@ func SetupRoutes(
 			appointmentRoutes.PUT("/:id", appointmentHandler.UpdateAppointment)
 			appointmentRoutes.PATCH("/:id/cancel", appointmentHandler.CancelAppointment) // Usando PATCH para mudança de status
 			appointmentRoutes.DELETE("/:id", appointmentHandler.DeleteAppointment) // Adicionado rota DELETE
+		}
+
+		// Rotas de Cliente (todas protegidas)
+		clientRoutes := apiV1.Group("/clients")
+		clientRoutes.Use(authMW) // Aplica o middleware de autenticação a todas as rotas de cliente
+		{
+			clientRoutes.POST("", clientHandler.CreateClient)
+			clientRoutes.GET("", clientHandler.ListUserClients)
+			clientRoutes.GET("/:id", clientHandler.GetClientByID)
+			clientRoutes.PUT("/:id", clientHandler.UpdateClient)
+			clientRoutes.DELETE("/:id", clientHandler.DeleteClient)
 		}
 	}
 

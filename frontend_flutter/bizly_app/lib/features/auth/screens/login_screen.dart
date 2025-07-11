@@ -1,8 +1,7 @@
 import 'package:bizly_app/shared/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// Importe a tela de registro se for navegar para ela
-// import 'package:bizly_app/features/auth/screens/register_screen.dart';
+import 'package:bizly_app/features/auth/screens/register_screen.dart'; // Importe a tela de registro
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -94,11 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
               TextButton(
                 onPressed: () {
-                  // Navegar para a tela de registro
-                  // Navigator.of(context).push(MaterialPageRoute(builder: (_) => RegisterScreen()));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                     const SnackBar(content: Text('Navegação para Registro (implementar)')),
-                  );
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RegisterScreen()));
                 },
                 child: const Text('Não tem uma conta? Cadastre-se'),
               ),
