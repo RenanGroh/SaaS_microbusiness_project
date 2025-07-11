@@ -30,11 +30,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   http: ^1.1.0
   provider: ^6.0.5 # Para gerenciamento de estado (ou riverpod, bloc)
   flutter_secure_storage: ^9.0.0 # Para armazenar o token JWT
   shared_preferences: ^2.2.2 # Para preferências não sensíveis (opcional)
-  intl: ^0.18.1 # Para formatação de datas, números, etc. (útil para agendamentos)
+  intl: ^0.20.2 # Para formatação de datas, números, etc. (útil para agendamentos)
   google_fonts: ^6.1.0 # Para usar fontes do Google Fonts facilmente (opcional)
 
   # The following adds the Cupertino Icons font to your application.

@@ -43,6 +43,12 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
     final pickedTime = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
+      builder: (BuildContext context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
     );
     if (pickedTime != null) {
       setState(() {
@@ -69,16 +75,15 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
       _startTime!.day,
       _selectedTime!.hour,
       _selectedTime!.minute,
-    );
+    ).toUtc(); // Converte para UTC
     // Exemplo: duração de 1 hora
     final finalEndTime = finalStartTime.add(const Duration(hours: 1));
-
 
     final appointmentData = {
       'clientName': _clientNameController.text,
       'serviceDescription': _serviceDescController.text,
-      'startTime': finalStartTime.toUtc().toIso8601String(),
-      'endTime': finalEndTime.toUtc().toIso8601String(),
+      'startTime': finalStartTime.toIso8601String(), // Agora vai gerar com 'Z'
+      'endTime': finalEndTime.toIso8601String(),   // Agora vai gerar com 'Z'
       // Adicione outros campos como clientEmail, phone, price, etc.
       'clientEmail': 'placeholder@email.com',
       'clientPhone': '000000000',

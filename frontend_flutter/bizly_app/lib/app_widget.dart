@@ -3,6 +3,8 @@ import 'package:bizly_app/features/home/screens/home_screen.dart'; // Você cria
 import 'package:bizly_app/shared/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart'; // Adicionado
+import 'package:intl/intl.dart'; // Adicionado
 
 class AppWidget extends StatelessWidget {
   const AppWidget({super.key});
@@ -15,6 +17,15 @@ class AppWidget extends StatelessWidget {
         primarySwatch: Colors.blue, // Personalize seu tema
         // visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('pt', 'BR'), // Português do Brasil
+      ],
+      locale: const Locale('pt', 'BR'), // Define o locale padrão
       home: Consumer<AuthService>(
         builder: (context, authService, _) {
           if (authService.isLoading) {
