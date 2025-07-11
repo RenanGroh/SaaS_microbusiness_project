@@ -20,19 +20,22 @@ func main() {
 	if err != nil {
 		log.Fatalf("Falha ao conectar ao banco de dados: %v", err)
 	}
-	err = db.AutoMigrate(&gormPersistence.UserGormModel{}, &gormPersistence.AppointmentGormModel{})
+	err = db.AutoMigrate(&gormPersistence.UserGormModel{}, &gormPersistence.AppointmentGormModel{}, &gormPersistence.ClientGormModel{})
 	if err != nil {
 		log.Fatalf("Falha ao rodar AutoMigrate: %v", err)
 	}
 
 	userGormRepo := gormPersistence.NewGormUserRepository(db)
 	appointmentGormRepo := gormPersistence.NewGormAppointmentRepository(db)
+	clientGormRepo := gormPersistence.NewGormClientRepository(db) // Adicionado
 
 	userUC := usecase.NewUserUseCase(userGormRepo, cfg.JWTSecret, cfg.JWTExpirationHours)
 	appointmentUC := usecase.NewAppointmentUseCase(appointmentGormRepo, userGormRepo)
+	clientUC := usecase.NewClientUseCase(clientGormRepo, userGormRepo) // Adicionado
 
 	userHandler := httpDelivery.NewUserHandler(userUC)
 	appointmentHandler := httpDelivery.NewAppointmentHandler(appointmentUC)
+	clientHandler := httpDelivery.NewClientHandler(clientUC) // Adicionado
 
 	// gin.SetMode(gin.ReleaseMode) // Descomente para produção
 	router := gin.Default() // gin.Default() já inclui logger e recovery
@@ -58,7 +61,7 @@ func main() {
 	router.Use(cors.New(corsConfig))
 	// --- FIM DA CONFIGURAÇÃO DO CORS ---
 
-	httpDelivery.SetupRoutes(router, cfg, userHandler, appointmentHandler)
+	httpDelivery.SetupRoutes(router, cfg, userHandler, appointmentHandler, clientHandler)
 
 	log.Printf("Servidor Bizly iniciando na porta %s", cfg.ServerPort)
 	if err := router.Run(":" + cfg.ServerPort); err != nil {

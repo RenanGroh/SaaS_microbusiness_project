@@ -118,4 +118,13 @@ class ApiService {
     final headers = await _getHeaders(requiresAuth: true);
     return http.delete(url, headers: headers);
   }
+
+  // Métodos para Clientes
+  Future<http.Response> createClient(Map<String, dynamic> body) async {
+    return post('clients', body, requiresAuth: true);
+  }
+
+  Future<http.Response> getClients() async {
+    return get('clients', requiresAuth: true);
+  }
 }
